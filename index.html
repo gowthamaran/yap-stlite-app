@@ -57,7 +57,7 @@ self.state[0] = (self.state[0] + 1) % 24
 if self.state[0] == 0: self.done = True
 return self._get_state_index(), reward, self.done
 
-def train_q_table(env, episodes=500, lr=0.1, gamma=0.99, epsilon=0.1):
+def train_q_table(env, episodes=100, lr=0.1, gamma=0.99, epsilon=0.1):
 Q = np.zeros((env.state_space, env.action_space))
 for episode in range(episodes):
 state = env.reset()
