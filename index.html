@@ -1,109 +1,107 @@
 <!doctype html>
 <html>
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>Yap Strategy Simulator</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/browser@0.85.1/build/stlite.css" />
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@stlite/browser@0.85.1/build/stlite.js"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module">
-      import { mount } from "https://cdn.jsdelivr.net/npm/@stlite/browser@0.85.1/build/stlite.js";
-      mount(
-        {
-          requirements: ["numpy"],  // Add numpy as dependency
-          entrypoint: "streamlit_app.py",
-          files: {
-            "streamlit_app.py": `
-            import streamlit as st
-            import numpy as np
-            import random
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+<title>Yap Strategy Simulator</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/browser@0.85.1/build/stlite.css" />
+<script type="module" src="https://cdn.jsdelivr.net/npm/@stlite/browser@0.85.1/build/stlite.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="module">
+import { mount } from "https://cdn.jsdelivr.net/npm/@stlite/browser@0.85.1/build/stlite.js";
+mount(
+{
+requirements: ["numpy"], // For np.zeros, etc.
+entrypoint: "streamlit_app.py",
+files: {
+"streamlit_app.py": `
+import streamlit as st
+import numpy as np
+import random
 
-            # Paste your YapEnv class here (from original code)
-            class YapEnv:
-                def __init__(self):
-                    self.state_space = 24 * 4
-                    self.action_space = 5
-                    self.reset()
+class YapEnv:
+def __init__(self):
+self.state_space = 24 * 4
+self.action_space = 5
+self.reset()
 
-                def reset(self):
-                    self.state = [random.randint(0, 23), 0]
-                    self.done = False
-                    return self._get_state_index()
+def reset(self):
+self.state = [random.randint(0, 23), 0]
+self.done = False
+return self._get_state_index()
 
-                def _get_state_index(self):
-                    return self.state[0] * 4 + self.state[1]
+def _get_state_index(self):
+return self.state[0] * 4 + self.state[1]
 
-                def step(self, action):
-                    if self.done:
-                        return self._get_state_index(), 0, True
-                    hour = self.state[0]
-                    points_level = self.state[1]
-                    reward = 0
-                    if action == 0:
-                        reward = -1
-                    else:
-                        base_reward = random.uniform(1, 5)
-                        if action == 2: base_reward += 2
-                        if action == 3: base_reward += 3
-                        if action == 4: base_reward += 1.5
-                        if 8 <= hour <= 12 or 18 <= hour <= 22: base_reward *= 1.5
-                        reward = base_reward
-                    new_points = points_level + int(reward // 5)
-                    self.state[1] = min(3, new_points)
-                    self.state[0] = (self.state[0] + 1) % 24
-                    if self.state[0] == 0: self.done = True
-                    return self._get_state_index(), reward, self.done
+def step(self, action):
+if self.done:
+return self._get_state_index(), 0, True
+hour = self.state[0]
+points_level = self.state[1]
+reward = 0
+if action == 0:
+reward = -1
+else:
+base_reward = random.uniform(1, 5)
+if action == 2: base_reward += 2
+if action == 3: base_reward += 3
+if action == 4: base_reward += 1.5
+if 8 <= hour <= 12 or 18 <= hour <= 22: base_reward *= 1.5
+reward = base_reward
+new_points = points_level + int(reward // 5)
+self.state[1] = min(3, new_points)
+self.state[0] = (self.state[0] + 1) % 24
+if self.state[0] == 0: self.done = True
+return self._get_state_index(), reward, self.done
 
-            # Paste train_q_table function here
-            def train_q_table(env, episodes=500, lr=0.1, gamma=0.99, epsilon=0.1):
-                Q = np.zeros((env.state_space, env.action_space))
-                for episode in range(episodes):
-                    state = env.reset()
-                    while not env.done:
-                        if random.uniform(0, 1) < epsilon:
-                            action = random.randint(0, env.action_space - 1)
-                        else:
-                            action = np.argmax(Q[state])
-                        next_state, reward, done = env.step(action)
-                        Q[state, action] += lr * (reward + gamma * np.max(Q[next_state]) - Q[state, action])
-                        state = next_state
-                return Q
+def train_q_table(env, episodes=500, lr=0.1, gamma=0.99, epsilon=0.1):
+Q = np.zeros((env.state_space, env.action_space))
+for episode in range(episodes):
+state = env.reset()
+while not env.done:
+if random.uniform(0, 1) < epsilon:
+action = random.randint(0, env.action_space - 1)
+else:
+action = np.argmax(Q[state])
+next_state, reward, done = env.step(action)
+Q[state, action] += lr * (reward + gamma * np.max(Q[next_state]) - Q[state, action])
+state = next_state
+return Q
 
-            # Paste simulate_strategy function here
-            def simulate_strategy(Q, env):
-                state = env.reset()
-                total_reward = 0
-                actions_taken = []
-                while not env.done:
-                    action = np.argmax(Q[state])
-                    next_state, reward, done = env.step(action)
-                    actions_taken.append((env.state[0], action, reward))
-                    state = next_state
-                    total_reward += reward
-                return total_reward, actions_taken
+def simulate_strategy(Q, env):
+state = env.reset()
+total_reward = 0
+actions_taken = []
+while not env.done:
+action = np.argmax(Q[state])
+next_state, reward, done = env.step(action)
+actions_taken.append((env.state[0], action, reward))
+state = next_state
+total_reward += reward
+return total_reward, actions_taken
 
-            st.title("Yap Strategy Simulator")
-            st.write("Click to run simulation.")
-            if st.button("Run Simulation"):
-                env = YapEnv()
-                q_table = train_q_table(env)
-                total_reward, actions_taken = simulate_strategy(q_table, env)
-                st.success(f"Total Yap Reward: {total_reward}")
-                st.write("Actions (Hour, Action, Reward):")
-                for a in actions_taken:
-                    st.write(a)
-            `
-          },
-          streamlitConfig: {
-            "client.toolbarMode": "viewer"  // Hides dev toolbar
-          }
-        },
-        document.getElementById("root")
-      );
-    </script>
-  </body>
+st.title("Yap Strategy Simulator")
+st.write("Click to run simulation.")
+episodes = st.slider("Number of Training Episodes", min_value=100, max_value=1000, value=500)
+if st.button("Run Simulation"):
+env = YapEnv()
+q_table = train_q_table(env, episodes=episodes)
+total_reward, actions_taken = simulate_strategy(q_table, env)
+st.success(f"Total Yap Reward: {total_reward}")
+st.write("Actions (Hour, Action, Reward):")
+for a in actions_taken:
+st.write(a)
+`
+},
+streamlitConfig: {
+"client.toolbarMode": "viewer"
+}
+},
+document.getElementById("root")
+);
+</script>
+</body>
 </html>
